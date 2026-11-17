@@ -1,0 +1,27 @@
+Origen,Destino,Peso
+Glucosa,Glucosa-6-fosfato,1
+Glucosa-6-fosfato,Glucosa,1
+Glucosa-6-fosfato,Piruvato,9
+Glucosa-6-fosfato,Glucógeno,3
+Glucógeno,Glucosa-6-fosfato,2
+Glucosa-6-fosfato,Ribosa-5-fosfato,4
+Fructosa,Glucosa-6-fosfato,2
+Fructosa,Piruvato,8
+Piruvato,Lactato,1
+Lactato,Piruvato,1
+Piruvato,Alanina,1
+Alanina,Piruvato,1
+Piruvato,Acetil-CoA,1
+Piruvato,Oxalacetato,1
+Oxalacetato,Glucosa-6-fosfato,9
+Acetil-CoA,CO2 + ATP,8
+Acetil-CoA,Malonil-CoA,1
+Acetil-CoA,HMG-CoA,2
+Malonil-CoA,Ácido palmítico,7
+Ácido palmítico,Acetil-CoA,8
+Ácido palmítico,Triglicéridos,5
+Triglicéridos,Ácido palmítico,3
+HMG-CoA,Cuerpos cetónicos,1
+Cuerpos cetónicos,Acetil-CoA,2
+HMG-CoA,Mevalonato,1
+Mevalonato,Colesterol,28
