@@ -49,8 +49,8 @@ SEPARADOR_DE_RUTA = " -> "
 def pedir_nombre(mensaje: str, grafo: Grafo) -> str:
     """Pide un nombre de nodo hasta que no esté vacío.
 
-    Si coincide con un nodo existente sin distinguir mayúsculas, devuelve
-    el nombre tal como está en el grafo.
+    Si coincide con un nodo existente sin distinguir mayúsculas ni acentos,
+    devuelve el nombre tal como está en el grafo.
     """
     while True:
         try:
@@ -58,7 +58,7 @@ def pedir_nombre(mensaje: str, grafo: Grafo) -> str:
         except ValueError as error:
             print(f"  Entrada inválida: {error}. Intenta de nuevo.")
             continue
-        return resolver_nombre(grafo, nombre)
+        return grafo.buscar_nodo(nombre) or nombre
 
 
 def pedir_peso(mensaje: str) -> float:
@@ -80,17 +80,6 @@ def pedir_opcion() -> str:
             f"  Opción inválida: escribe un número del {OPCIONES_VALIDAS[0]} "
             f"al {OPCIONES_VALIDAS[-1]}."
         )
-
-
-def resolver_nombre(grafo: Grafo, nombre: str) -> str:
-    """Devuelve el nodo existente que coincide sin distinguir mayúsculas.
-
-    Si no hay coincidencia, devuelve el nombre tal como se recibió.
-    """
-    for existente in grafo.nombres_de_nodos:
-        if existente.casefold() == nombre.casefold():
-            return existente
-    return nombre
 
 
 def agregar_conexion(grafo: Grafo, ruta_csv: Path) -> None:

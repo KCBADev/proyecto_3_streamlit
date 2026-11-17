@@ -13,7 +13,16 @@ from __future__ import annotations
 
 import heapq
 import math
+import unicodedata
 from dataclasses import dataclass
+
+
+def _normalizar(texto: str) -> str:
+    """Devuelve el texto en minúsculas y sin acentos, para compararlo."""
+    descompuesto = unicodedata.normalize("NFD", texto.casefold())
+    return "".join(
+        letra for letra in descompuesto if not unicodedata.combining(letra)
+    )
 
 
 class NodoNoEncontradoError(KeyError):
@@ -86,6 +95,32 @@ class Grafo:
     def nombres_de_nodos(self) -> list[str]:
         """Nombres de todos los nodos, en orden de inserción."""
         return list(self._nodos)
+
+    @property
+    def aristas(self) -> list[tuple[str, str, float]]:
+        """Conexiones del grafo como tuplas (origen, destino, peso).
+
+        En un grafo no dirigido cada conexión aparece en ambos sentidos.
+        """
+        return [
+            (nodo.nombre, vecino.nombre, peso)
+            for nodo in self._nodos.values()
+            for vecino, peso in nodo.vecinos.items()
+        ]
+
+    def buscar_nodo(self, nombre: str) -> str | None:
+        """Devuelve el nombre registrado del nodo que coincide con ``nombre``.
+
+        Prefiere la coincidencia exacta; si no la hay, compara sin
+        distinguir mayúsculas ni acentos. Devuelve None si no existe.
+        """
+        if nombre in self._nodos:
+            return nombre
+        buscado = _normalizar(nombre)
+        for existente in self._nodos:
+            if _normalizar(existente) == buscado:
+                return existente
+        return None
 
     def agregar_nodo(self, nombre: str) -> Nodo:
         """Devuelve el nodo con ese nombre, creándolo si no existía."""
