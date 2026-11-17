@@ -9,15 +9,16 @@ El ejemplo es una red metabólica de Nutrición: cada nodo es un metabolito, cad
 | Archivo | Contenido |
 |---|---|
 | `app.py` | Interfaz visual en Streamlit |
+| `visualizacion.py` | Escena animada de moléculas y rutas (componente Streamlit v2) |
 | `main.py` | Programa de consola del Proyecto 2 |
 | `grafo.py` | Clases `Nodo` y `Grafo`, y el algoritmo de Dijkstra |
 | `io_handler.py` | Lectura y escritura de `nodos.csv` |
 | `nodos.csv` | Conexiones de la red (`Origen,Destino,Peso`) |
-| `requirements.txt` | Dependencias: `streamlit`, `pandas` y `flake8` |
+| `requirements.txt` | Dependencias: `streamlit` (1.57 o superior), `pandas` y `flake8` |
 
 ## Cómo ejecutar
 
-Requiere Python 3.9 o superior.
+Requiere Python 3.10 o superior.
 
 ```
 py -3 -m pip install -r requirements.txt
@@ -30,10 +31,11 @@ El programa de consola del Proyecto 2 sigue disponible con `py -3 main.py`.
 
 ## Qué hace la aplicación
 
-- **Calcular ruta**: se escriben el nodo origen y el nodo destino, y muestra el costo total mínimo, el recorrido y el detalle de cada tramo. Avisa si no existe una ruta o si un nodo no está en la red.
+- **Calcular ruta**: se eligen el sustrato inicial y el metabolito destino. La escena anima una representación conceptual de las moléculas y la ruta mínima; muestra el costo total, el recorrido y el detalle de cada tramo. El costo sigue siendo el número de reacciones enzimáticas, no una medida energética real.
 - **Registrar conexión**: guarda una conexión nueva en `nodos.csv` y la agrega al grafo en memoria. Si la conexión ya existe con otro peso, lo actualiza.
 - **Red actual**: tablas de conexiones y de nodos, construidas con pandas.
 - **Barra lateral**: número de nodos y conexiones, y la hora en que se leyó el archivo.
+- **Diseño**: tema oscuro, acentos inspirados en bioluminiscencia y partículas interactivas. Las esferas de la animación son simbólicas y no representan fórmulas químicas exactas.
 
 Los nombres de nodos se reconocen sin distinguir mayúsculas ni acentos (`acido palmitico` = `Ácido palmítico`).
 

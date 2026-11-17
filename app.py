@@ -13,7 +13,6 @@ Uso:
 
 from __future__ import annotations
 
-import difflib
 import re
 from datetime import datetime
 from pathlib import Path
@@ -22,7 +21,8 @@ import pandas as pd
 import streamlit as st
 
 import io_handler
-from grafo import Grafo, NodoNoEncontradoError, ResultadoRuta
+from grafo import Grafo, ResultadoRuta
+from visualizacion import mostrar_escena_molecular
 
 RUTA_CSV = Path(__file__).resolve().parent / "nodos.csv"
 
@@ -31,6 +31,7 @@ CLAVE_GRAFO = "grafo"
 CLAVE_ADVERTENCIAS = "advertencias_de_carga"
 CLAVE_HORA_DE_CARGA = "hora_de_carga"
 CLAVE_AVISO = "aviso_de_registro"
+CLAVE_RUTA_CALCULADA = "ruta_calculada"
 CLAVE_NUEVO_ORIGEN = "nuevo_origen"
 CLAVE_NUEVO_DESTINO = "nuevo_destino"
 CLAVE_NUEVO_PESO = "nuevo_peso"
@@ -44,7 +45,6 @@ ETIQUETA_ORIGEN = "Nodo origen"
 ETIQUETA_DESTINO = "Nodo destino"
 COLUMNAS_DE_CONEXIONES = list(io_handler.ENCABEZADOS)
 SEPARADOR_DE_RUTA = " → "
-MAXIMO_DE_SUGERENCIAS = 3
 CARACTERES_DE_MARKDOWN = re.compile(r"([\\`*_{}\[\]()#+\-.!|<>~$:])")
 
 AVISO_ERROR = "error"
@@ -211,18 +211,6 @@ def mostrar_barra_lateral(grafo: Grafo) -> None:
         )
 
 
-def mensaje_de_nodo_inexistente(grafo: Grafo, nombre: str) -> str:
-    """Devuelve el aviso de nodo inexistente, con nombres parecidos."""
-    mensaje = f"El nodo «{escapar_markdown(nombre)}» no existe en la red."
-    parecidos = difflib.get_close_matches(
-        nombre, grafo.nombres_de_nodos, n=MAXIMO_DE_SUGERENCIAS
-    )
-    if parecidos:
-        sugerencias = ", ".join(escapar_markdown(p) for p in parecidos)
-        mensaje += f" ¿Quisiste decir: {sugerencias}?"
-    return mensaje
-
-
 def construir_tabla_de_tramos(
     grafo: Grafo, nodos: tuple[str, ...]
 ) -> pd.DataFrame:
@@ -256,45 +244,24 @@ def mostrar_resultado(
         st.info("El origen y el destino son el mismo nodo: el costo es 0.")
         return
 
+    unidad_de_costo = (
+        "reacción" if resultado.costo == 1 else "reacciones"
+    )
     columna_costo, columna_tramos = st.columns(2)
     columna_costo.metric(
-        "Costo total mínimo", f"{resultado.costo:g} reacciones"
+        "Costo mínimo", f"{resultado.costo:g} {unidad_de_costo}"
     )
-    columna_tramos.metric("Conversiones", len(resultado.nodos) - 1)
+    columna_tramos.metric("Transformaciones", len(resultado.nodos) - 1)
     recorrido = SEPARADOR_DE_RUTA.join(
         escapar_markdown(nodo) for nodo in resultado.nodos
     )
     with st.container(border=True):
-        st.markdown(f"**Recorrido:** {recorrido}")
+        st.markdown(f"**Ruta encontrada**  \n{recorrido}")
     with st.expander("Detalle del recorrido"):
         st.dataframe(
             construir_tabla_de_tramos(grafo, resultado.nodos),
             hide_index=True,
         )
-
-
-def calcular_ruta(grafo: Grafo, texto_origen: str, texto_destino: str) -> None:
-    """Valida los nodos escritos y muestra la ruta más corta entre ellos."""
-    try:
-        origen = leer_nombre(texto_origen, ETIQUETA_ORIGEN)
-        destino = leer_nombre(texto_destino, ETIQUETA_DESTINO)
-        origen = grafo.buscar_nodo(origen) or origen
-        destino = grafo.buscar_nodo(destino) or destino
-        resultado = grafo.ruta_mas_corta(origen, destino)
-    except ValueError as error:
-        st.error(
-            f"Entrada inválida: {escapar_markdown(str(error))}.",
-            icon=":material/error:",
-        )
-        return
-    except NodoNoEncontradoError as error:
-        # NodoNoEncontradoError es un KeyError: el nodo no está en el grafo.
-        st.error(
-            mensaje_de_nodo_inexistente(grafo, error.nombre),
-            icon=":material/error:",
-        )
-        return
-    mostrar_resultado(grafo, origen, destino, resultado)
 
 
 def mostrar_calculadora(grafo: Grafo) -> None:
@@ -303,22 +270,67 @@ def mostrar_calculadora(grafo: Grafo) -> None:
         st.info("La red está vacía: registra primero una conexión.")
         return
 
-    with st.form("formulario_de_ruta"):
-        columna_origen, columna_destino = st.columns(2)
-        texto_origen = columna_origen.text_input(
-            ETIQUETA_ORIGEN, placeholder="Ej. Glucosa"
-        )
-        texto_destino = columna_destino.text_input(
-            ETIQUETA_DESTINO, placeholder="Ej. Colesterol"
-        )
-        enviado = st.form_submit_button(
-            "Calcular ruta", type="primary", icon=":material/route:"
-        )
+    nombres = sorted(grafo.nombres_de_nodos, key=str.casefold)
+    origen_inicial = "Glucosa" if "Glucosa" in nombres else nombres[0]
+    destino_inicial = (
+        "Colesterol" if "Colesterol" in nombres else nombres[-1]
+    )
+    columna_origen, columna_destino = st.columns(2)
+    origen = columna_origen.selectbox(
+        "Sustrato inicial",
+        nombres,
+        index=nombres.index(origen_inicial),
+        key="selector_sustrato_inicial",
+    )
+    destino = columna_destino.selectbox(
+        "Metabolito destino",
+        nombres,
+        index=nombres.index(destino_inicial),
+        key="selector_metabolito_destino",
+    )
+    enviado = st.button(
+        "Calcular ruta metabólica",
+        type="primary",
+        icon=":material/bolt:",
+        key="calcular_ruta_metabolica",
+    )
+
     if enviado:
-        calcular_ruta(grafo, texto_origen, texto_destino)
+        resultado = grafo.ruta_mas_corta(origen, destino)
+        st.session_state[CLAVE_RUTA_CALCULADA] = (
+            origen,
+            destino,
+            resultado,
+        )
+
+    ruta_guardada = st.session_state.get(CLAVE_RUTA_CALCULADA)
+    resultado_actual = None
+    if (
+        ruta_guardada is not None
+        and ruta_guardada[0] == origen
+        and ruta_guardada[1] == destino
+    ):
+        resultado_actual = ruta_guardada[2]
+
+    mostrar_escena_molecular(
+        origen,
+        destino,
+        ruta=resultado_actual.nodos if resultado_actual is not None else (),
+        costo=(
+            resultado_actual.costo
+            if resultado_actual is not None and resultado_actual.existe
+            else None
+        ),
+        calculada=resultado_actual is not None,
+    )
+    st.caption(
+        "Las esferas representan átomos de forma simbólica; la animación "
+        "no pretende mostrar fórmulas químicas exactas."
+    )
+    if resultado_actual is not None:
+        mostrar_resultado(grafo, origen, destino, resultado_actual)
 
     with st.expander("Nodos disponibles"):
-        nombres = sorted(grafo.nombres_de_nodos, key=str.casefold)
         st.markdown(" · ".join(escapar_markdown(n) for n in nombres))
 
 
@@ -402,15 +414,23 @@ def mostrar_red(grafo: Grafo) -> None:
 def main() -> None:
     """Dibuja la página completa."""
     st.set_page_config(
-        page_title="Red metabólica", page_icon=":material/hub:"
+        page_title="BioRuta · laboratorio metabólico",
+        page_icon=":material/hub:",
+        layout="wide",
+        initial_sidebar_state="collapsed",
     )
     inicializar_estado()
     grafo: Grafo = st.session_state[CLAVE_GRAFO]
 
-    st.title("Red metabólica: ruta más corta")
+    st.badge(
+        "LABORATORIO METABÓLICO",
+        icon=":material/biotech:",
+        color="green",
+    )
+    st.title("Sigue el pulso de cada transformación.")
     st.caption(
-        "Encuentra con el algoritmo de Dijkstra la vía con menos reacciones "
-        "enzimáticas para convertir un metabolito en otro."
+        "Explora cómo viaja un sustrato por la red y encuentra la ruta que "
+        "requiere menos reacciones enzimáticas."
     )
     mostrar_advertencias_de_carga()
     mostrar_barra_lateral(grafo)
